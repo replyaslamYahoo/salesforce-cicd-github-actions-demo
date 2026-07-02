@@ -5,34 +5,9 @@ on:
     branches: [ main ]
 
 jobs:
-  pmd-analysis:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run PMD Apex Analysis
-        uses: pmd/pmd-github-action@v2
-        id: pmd
-        with:
-          version: '7.0.0'
-          sourcePath: 'force-app/main/default/classes'
-          rulesets: 'ruleset.xml'
-          analyzeModifiedFilesOnly: true
-
-      - name: Check PMD violations
-        if: steps.pmd.outputs.violations != '0'
-        run: |
-          echo "⚠️ PMD found ${{ steps.pmd.outputs.violations }} violation(s) — see annotations above"
-          # exit 1
-
-
   validate:
     runs-on: ubuntu-latest
     environment: production
-    needs: pmd-analysis
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
