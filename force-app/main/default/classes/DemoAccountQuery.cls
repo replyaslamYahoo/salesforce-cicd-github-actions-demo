@@ -1,6 +1,8 @@
 //test1
+//Feature: change1- added
 public without sharing class DemoAccountQuery {
     public Account getById(Id accountId) {
+         ystem.debug('1');
         List<Account> accounts = [
             SELECT Id, Name, Description
             FROM Account
@@ -11,7 +13,8 @@ public without sharing class DemoAccountQuery {
 
     public void doSomethingRisky() {
         try {
-            Integer x = 1 / 0;
+           
+            Integer x = 1 / 0;            
         } catch (Exception e) {
         }
     }
