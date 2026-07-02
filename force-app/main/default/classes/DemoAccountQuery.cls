@@ -1,6 +1,6 @@
-//test1,test2
-// PMD CI test
-public without sharing class DemoAccountQuery {
+public without sharing class DemoCopadoClass {
+    
+    //this is copado testing 1
     public Account getById(Id accountId) {
         List<Account> accounts = [
             SELECT Id, Name, Description
