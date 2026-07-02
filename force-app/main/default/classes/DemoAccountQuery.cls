@@ -1,5 +1,4 @@
-//test1,test2
-// PMD CI test
+//test1
 public without sharing class DemoAccountQuery {
     public Account getById(Id accountId) {
         List<Account> accounts = [
