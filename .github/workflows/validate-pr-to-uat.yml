@@ -1,0 +1,91 @@
+name: PR Validation - UAT
+
+on:
+  pull_request:
+    branches: [ uat ]
+
+jobs:
+  pmd-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run PMD Apex Analysis
+        uses: pmd/pmd-github-action@v2
+        id: pmd
+        with:
+          version: '7.0.0'
+          sourcePath: 'force-app/main/default/classes'
+          rulesets: 'ruleset.xml'
+          analyzeModifiedFilesOnly: true
+
+      - name: Check PMD violations
+        if: steps.pmd.outputs.violations != '0'
+        run: |
+          echo "⚠️ PMD found ${{ steps.pmd.outputs.violations }} violation(s) — see annotations above"
+          # exit 1
+
+
+  validate:
+    runs-on: ubuntu-latest
+    environment: uat
+    needs: pmd-analysis
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Install sfdx-git-delta
+        run: echo y | sf plugins install sfdx-git-delta
+
+      - name: Write private key
+        run: |
+          echo "${{ secrets.SF_PRIVATE_KEY }}" | base64 --decode > /tmp/server.key
+          chmod 600 /tmp/server.key
+
+      - name: JWT auth
+        run: |
+          sf org login jwt \
+            --client-id "${{ secrets.SF_CLIENT_ID }}" \
+            --jwt-key-file /tmp/server.key \
+            --username "${{ secrets.SF_USERNAME }}" \
+            --instance-url "${{ secrets.SF_INSTANCE_URL }}" \
+            --set-default
+
+      - name: Generate delta package
+        run: |
+          mkdir -p delta
+          BASE_SHA=$(git merge-base HEAD origin/${{ github.base_ref }})
+          echo "Delta from: $BASE_SHA (merge-base with ${{ github.base_ref }}) → HEAD"
+
+          sf sgd source delta \
+            --from "$BASE_SHA" \
+            --to HEAD \
+            --output-dir delta/ \
+            --source-dir force-app
+
+          echo "=== package.xml ==="
+          cat delta/package/package.xml || echo "Not generated"
+          echo "=== destructiveChanges.xml ==="
+          cat delta/destructiveChanges/destructiveChanges.xml || echo "Not generated"
+
+      - name: Validate delta deploy
+        run: |
+          if [ -s delta/package/package.xml ] && grep -q "<types>" delta/package/package.xml; then
+            sf project deploy validate \
+              --manifest delta/package/package.xml \
+              --test-level RunLocalTests
+          else
+            echo "No changes detected — skipping validation"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/server.key

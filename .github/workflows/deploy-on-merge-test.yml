@@ -1,0 +1,88 @@
+name: Deploy to Test Org
+
+on:
+  push:
+    branches: [ test ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Install sfdx-git-delta
+        run: echo y | sf plugins install sfdx-git-delta
+
+      - name: Write private key
+        run: |
+          echo "${{ secrets.SF_PRIVATE_KEY }}" | base64 --decode > /tmp/server.key
+          chmod 600 /tmp/server.key
+
+      - name: JWT auth
+        run: |
+          sf org login jwt \
+            --client-id "${{ secrets.SF_CLIENT_ID }}" \
+            --jwt-key-file /tmp/server.key \
+            --username "${{ secrets.SF_USERNAME }}" \
+            --instance-url "${{ secrets.SF_INSTANCE_URL }}" \
+            --set-default
+
+      - name: Generate delta package
+        run: |
+          mkdir -p delta
+
+          # Use github.event.before to get the SHA before this push/merge
+          # This is the correct baseline for delta — not HEAD~1 which breaks on merge commits
+          BEFORE_SHA="${{ github.event.before }}"
+
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            # First push to branch — fall back to parent commit
+            BEFORE_SHA=$(git rev-parse HEAD~1)
+            echo "First push detected, using HEAD~1: $BEFORE_SHA"
+          else
+            echo "Using before SHA from push event: $BEFORE_SHA"
+          fi
+
+          echo "Delta from: $BEFORE_SHA → HEAD"
+
+          sf sgd source delta \
+            --from "$BEFORE_SHA" \
+            --to HEAD \
+            --output-dir delta/ \
+            --source-dir force-app
+
+          echo "=== package.xml ==="
+          cat delta/package/package.xml || echo "Not generated"
+          echo "=== destructiveChanges.xml ==="
+          cat delta/destructiveChanges/destructiveChanges.xml || echo "Not generated"
+
+      - name: Deploy delta
+        run: |
+          if [ -s delta/package/package.xml ] && grep -q "<types>" delta/package/package.xml; then
+            sf project deploy start \
+              --manifest delta/package/package.xml \
+              --test-level RunAllTestsInOrg
+          else
+            echo "No changes detected — skipping deploy"
+          fi
+
+      - name: Deploy destructive changes
+        run: |
+          if [ -s delta/destructiveChanges/destructiveChanges.xml ] && grep -q "<types>" delta/destructiveChanges/destructiveChanges.xml; then
+            sf project deploy start \
+              --manifest delta/destructiveChanges/destructiveChanges.xml \
+              --test-level NoTestRun
+          else
+            echo "No destructive changes — skipping"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/server.key

@@ -1,0 +1,21 @@
+﻿# Salesforce CLI local state
+.sf/
+.sfdx/
+.localdevserver/
+deploy-options.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local scratch (not part of source)
+.tmp/
+scripts/
+test-data/
+node_modules/
+delta/
