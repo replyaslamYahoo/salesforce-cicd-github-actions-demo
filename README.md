@@ -4,7 +4,7 @@ A minimal, public **Salesforce DX** sample for branch-based deployments with **G
 
 **Package name:** `salesforce-cicd-demo` (see `sfdx-project.json`)
 
-> **Full walkthrough:** Step-by-step guide with screenshots in [`blog/implement-salesforce-cicd-github-actions.html`](blog/implement-salesforce-cicd-github-actions.html) (local) or publish from `blog/medium-salesforce-cicd-github-actions.md`.
+> **Full walkthrough:** **Medium** — publishing next week ([draft](https://medium.com/p/0a8012c738ef/edit); public URL will be `https://medium.com/@replyaslamYahoo/...-0a8012c738ef` after publish) · Repo draft: [`blog/medium-salesforce-cicd-github-actions.md`](blog/medium-salesforce-cicd-github-actions.md) · HTML/PDF: [`blog/implement-salesforce-cicd-github-actions.html`](blog/implement-salesforce-cicd-github-actions.html)
 
 ## What you get
 
